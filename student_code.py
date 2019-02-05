@@ -128,7 +128,67 @@ class KnowledgeBase(object):
         printv("Retracting {!r}", 0, verbose, [fact_or_rule])
         ####################################################
         # Student code goes here
+        if fact_or_rule in self.facts:
+            cst_fact = self._get_fact(fact_or_rule)
+            if not cst_fact.supported_by:
+                self.kb_remove(cst_fact)
+            else: return
+        else: print('error')
+    #help function
+    def kb_remove(self,fact_or_rule):
+
+        if factq(fact_or_rule):
+            cst_fact = self._get_fact(fact_or_rule)
+            if not cst_fact.supported_by:
+                supportfacts = cst_fact.supports_facts
+
+                for i in supportfacts:
+                    for j in i.supported_by:
+                        if cst_fact in j:
+                            i.supported_by.remove(j)
+                    
+                    self.kb_remove(i)
+
+                supportrules = cst_fact.supports_rules
+                for i in supportrules:
+                    for j in i.supported_by:
+                        if cst_fact in j:
+                            i.supported_by.remove(j)
+                    
+                    self.kb_remove(i)
+                        
+                self.facts.remove(cst_fact)
+            else: return None
         
+        elif isinstance(fact_or_rule,Rule): 
+            cst_rule = self._get_rule(fact_or_rule)
+            if not fact_or_rule.supported_by:
+                supportfacts = cst_rule.supports_facts
+
+                for i in supportfacts:
+                    for j in i.supported_by:
+                        if cst_rule in j:
+                            i.supported_by.remove(j)
+                    
+                    self.kb_remove(i)
+
+                supportrules = cst_rule.supports_rules
+                for i in supportrules:
+                    for j in i.supported_by:
+                        if cst_rule in j:
+                            i.supported_by.remove(j)
+                    
+                    self.kb_remove(i)
+                        
+                self.rules.remove(cst_rule)
+
+            else: return None
+        else: return None
+
+
+
+
+
 
 class InferenceEngine(object):
     def fc_infer(self, fact, rule, kb):
@@ -146,3 +206,39 @@ class InferenceEngine(object):
             [fact.statement, rule.lhs, rule.rhs])
         ####################################################
         # Student code goes here
+
+        binding = [match(fact.statement, rule.lhs[0])]
+
+        if not isinstance(binding[0],bool) :
+
+            supportedby = [fact, rule]
+            if len(rule.lhs) == 1:
+                new_statement = instantiate(rule.rhs,binding[0])
+                new_fact = Fact(new_statement,[supportedby])
+          
+                for existing_fact in kb.facts:
+                    if existing_fact.statement == new_statement:
+                        fact.supports_facts.append(existing_fact)
+                        rule.supports_facts.append(existing_fact)
+                        existing_fact.supported_by.append([supportedby])
+                
+                fact.supports_facts.append(new_fact)
+                rule.supports_facts.append(new_fact)
+                kb.kb_assert(new_fact)
+
+            if  len(rule.lhs) > 1:
+                rule_lhs_conponents = []
+                for element in rule.lhs[1:]:
+                    rule_lhs_component = instantiate(element,binding[0])
+                    rule_lhs_conponents.append(rule_lhs_component)
+                new_rule_rhs = instantiate(rule.rhs,binding[0])
+                new_rule = Rule([rule_lhs_conponents,new_rule_rhs],[[fact,rule]])
+                fact.supports_rules.append(new_rule)
+                rule.supports_rules.append(new_rule)
+                kb.kb_assert(new_rule)
+
+
+
+        else:
+            return None
+
